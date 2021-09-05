@@ -34,22 +34,22 @@ type MainRouteResponseBody struct {
 
 const (
 	version       = "0.0.1"
-	repositoryUrl = "https://github.com/ffflorian/pkgsource"
+	repositoryUrl = "https://github.com/ffflorian/npmsource"
 	unpkgBase     = "https://unpkg.com/browse"
 )
 
 var logger = simplelogger.New("npmsource", true, true)
 
 func hasQuery(context *gin.Context, query string) bool {
-	return context.Query(query) != "" && context.Query(query) != "false"
+	var queryValue, hasQuery = context.GetQuery(query)
+	return hasQuery && queryValue != "false"
 }
 
 func getMain(context *gin.Context) {
 	logger.Log("Got request for main page")
-	logger.Logf("unpkg query %s", context.Query("unpkg"))
 
 	if hasQuery(context, "unpkg") {
-		var redirectUrl = fmt.Sprintf("%s/pkgsource@latest", unpkgBase)
+		var redirectUrl = fmt.Sprintf("%s/npmsource@latest", unpkgBase)
 
 		if hasQuery(context, "raw") {
 			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectUrl)

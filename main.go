@@ -20,10 +20,13 @@ package main
 import (
 	"net/http"
 
+	"github.com/ffflorian/go-tools/simplelogger"
 	"github.com/gin-gonic/gin"
 )
 
 const version = "0.0.1"
+
+var logger = simplelogger.New("npmsource", false, true)
 
 type MainRouteResponseBody struct {
 	Code    int    `json:"code"`
@@ -33,17 +36,23 @@ type MainRouteResponseBody struct {
 }
 
 func getMain(c *gin.Context) {
+	logger.Log("Got request for main page")
+
 	response := &MainRouteResponseBody{
 		Code: http.StatusOK,
 	}
+
 	c.IndentedJSON(http.StatusOK, response)
 }
 
 func getVersion(c *gin.Context) {
+	logger.Log("Got request for version")
+
 	response := &MainRouteResponseBody{
 		Code:    http.StatusOK,
 		Version: version,
 	}
+
 	c.IndentedJSON(http.StatusOK, response)
 }
 
@@ -51,6 +60,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/", getMain)
 	router.GET("/version", getVersion)
+	router.StaticFile("/robots.txt", "./resources/robots.txt")
 
 	router.Run("localhost:8080")
 }

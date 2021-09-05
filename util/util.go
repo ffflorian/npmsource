@@ -17,9 +17,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package util
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func HasQuery(context *gin.Context, query string) bool {
 	var queryValue, hasQuery = context.GetQuery(query)
 	return hasQuery && queryValue != "false"
+}
+
+func Redirect(context *gin.Context, url string) {
+	context.Redirect(302, url)
+	context.Abort()
+}
+
+func ReturnJSON(context *gin.Context, data interface{}) {
+	context.IndentedJSON(http.StatusOK, data)
+	context.Abort()
 }

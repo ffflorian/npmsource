@@ -49,7 +49,7 @@ func GetMain(context *gin.Context) {
 
 		if util.HasQuery(context, "raw") {
 			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectUrl)
-			context.IndentedJSON(http.StatusOK, &MainRouteResponseBody{
+			util.ReturnJSON(context, &MainRouteResponseBody{
 				Code: http.StatusOK,
 				Url:  redirectUrl,
 			})
@@ -57,12 +57,12 @@ func GetMain(context *gin.Context) {
 		}
 
 		logger.Logf("Redirecting main page to unpkg: \"%s\"", redirectUrl)
-		context.Redirect(http.StatusFound, redirectUrl)
+		util.Redirect(context, redirectUrl)
 		return
 	}
 
 	if util.HasQuery(context, "raw") {
-		context.IndentedJSON(http.StatusOK, &MainRouteResponseBody{
+		util.ReturnJSON(context, &MainRouteResponseBody{
 			Code: http.StatusOK,
 			Url:  repositoryUrl,
 		})
@@ -70,5 +70,5 @@ func GetMain(context *gin.Context) {
 	}
 
 	logger.Logf("Redirecting main page to \"%s\"", repositoryUrl)
-	context.Redirect(http.StatusFound, repositoryUrl)
+	util.Redirect(context, repositoryUrl)
 }

@@ -18,15 +18,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ffflorian/go-tools/simplelogger"
 	"github.com/gin-gonic/gin"
 )
-
-const version = "0.0.1"
-
-var logger = simplelogger.New("npmsource", false, true)
 
 type MainRouteResponseBody struct {
 	Code    int    `json:"code"`
@@ -35,31 +32,54 @@ type MainRouteResponseBody struct {
 	Url     string `json:"url"`
 }
 
-func getMain(c *gin.Context) {
-	logger.Log("Got request for main page")
+const (
+	version       = "0.0.1"
+	repositoryUrl = "https://github.com/ffflorian/pkgsource"
+	unpkgBase     = "https://unpkg.com/browse"
+)
 
-	response := &MainRouteResponseBody{
-		Code: http.StatusOK,
-	}
+var logger = simplelogger.New("npmsource", true, true)
 
-	c.IndentedJSON(http.StatusOK, response)
+func hasQuery(context *gin.Context, query string) bool {
+	return context.Query(query) != "" && context.Query(query) != "false"
 }
 
-func getVersion(c *gin.Context) {
-	logger.Log("Got request for version")
+func getMain(context *gin.Context) {
+	logger.Log("Got request for main page")
+	logger.Logf("unpkg query %s", context.Query("unpkg"))
 
-	response := &MainRouteResponseBody{
-		Code:    http.StatusOK,
-		Version: version,
+	if hasQuery(context, "unpkg") {
+		var redirectUrl = fmt.Sprintf("%s/pkgsource@latest", unpkgBase)
+
+		if hasQuery(context, "raw") {
+			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectUrl)
+			context.IndentedJSON(http.StatusOK, &MainRouteResponseBody{
+				Code: http.StatusOK,
+				Url:  redirectUrl,
+			})
+			return
+		}
+
+		logger.Logf("Redirecting main page to unpkg: \"%s\"", redirectUrl)
+		context.Redirect(http.StatusFound, redirectUrl)
+		return
 	}
 
-	c.IndentedJSON(http.StatusOK, response)
+	if hasQuery(context, "raw") {
+		context.IndentedJSON(http.StatusOK, &MainRouteResponseBody{
+			Code: http.StatusOK,
+			Url:  repositoryUrl,
+		})
+		return
+	}
+
+	logger.Logf("Redirecting main page to \"%s\"", repositoryUrl)
+	context.Redirect(http.StatusFound, repositoryUrl)
 }
 
 func main() {
 	router := gin.Default()
 	router.GET("/", getMain)
-	router.GET("/version", getVersion)
 	router.StaticFile("/robots.txt", "./resources/robots.txt")
 
 	router.Run("localhost:8080")

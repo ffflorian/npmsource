@@ -22,7 +22,7 @@ import (
 	"net/http"
 
 	"github.com/ffflorian/go-tools/simplelogger"
-	"github.com/ffflorian/npmsources/util"
+	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
 )
 

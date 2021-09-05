@@ -17,113 +17,64 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package repositoryParser
 
+import (
+	"fmt"
+	URL "net/url"
+	"regexp"
+
+	"github.com/ffflorian/go-tools/simplelogger"
+	"github.com/ffflorian/npmsource/packageJson"
+	"github.com/ffflorian/npmsource/validateNpmPackageName"
+)
+
 type ParseResult struct {
-	Status string;
-	Url string;
+	Status string
+	Url    string
 }
 
 const (
-  INVALID_PACKAGE_NAME = "INVALID_NAME";
-  INVALID_URL = "INVALID_URL";
-  NO_URL_FOUND = "NO_URL_FOUND";
-  PACKAGE_NOT_FOUND = "PACKAGE_NOT_FOUND";
-  SERVER_ERROR = "SERVER_ERROR";
-  SUCCESS = "SUCCESS";
-  VERSION_NOT_FOUND = "VERSION_NOT_FOUND";
+	INVALID_PACKAGE_NAME = "INVALID_NAME"
+	INVALID_URL          = "INVALID_URL"
+	NO_URL_FOUND         = "NO_URL_FOUND"
+	PACKAGE_NOT_FOUND    = "PACKAGE_NOT_FOUND"
+	SERVER_ERROR         = "SERVER_ERROR"
+	SUCCESS              = "SUCCESS"
+	VERSION_NOT_FOUND    = "VERSION_NOT_FOUND"
 )
 
 var (
-	knownSSLHosts = []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"};
-	logger           = simplelogger.New("npmsource/repositoryParser", true, true);
+	knownSSLHosts = []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"}
+	logger        = simplelogger.New("npmsource/repositoryParser", true, true)
 )
 
-  func GetPackageUrl(rawPackageName string, version string) ParseResult {
-    var packageInfo: packageJson.FullMetadata;
-    var parsedUrl: string | null = null;
-    var parsedRepository: string | null = null;
+func cleanUrl(url string) (*string, error) {
+	url = regexp.MustCompile(`\.git$`).ReplaceAllString(url, "")
 
-    const validateResult = validatePackageName(rawPackageName);
+	var parsedURL, urlParseError = URL.Parse(url)
 
-    if (!validateResult.validForNewPackages) {
-      logger.info(`Invalid package name: "${rawPackageName}"`, validateResult);
-      return &ParseResult{status: ParseStatus.INVALID_PACKAGE_NAME};
-    }
+	if urlParseError != nil {
+		return nil, urlParseError
+	}
 
-    try {
-      packageInfo = await packageJson(rawPackageName, {fullMetadata: true, version});
-    } catch (error) {
-      if (error instanceof packageJson.VersionNotFoundError) {
-        logger.info(`Version "${version}" not found for package "${rawPackageName}".`);
-        return &ParseResult{status: ParseStatus.VERSION_NOT_FOUND};
-      }
+	var protocol = "http:"
 
-      if (error instanceof packageJson.PackageNotFoundError) {
-        logger.info(`Package "${rawPackageName}" not found.`);
-        return &ParseResult{status: ParseStatus.PACKAGE_NOT_FOUND};
-      }
+	for _, knownSSLHost := range knownSSLHosts {
+		if knownSSLHost == parsedURL.Hostname() {
+			protocol = "https:"
+		}
+	}
 
-      logger.error(error);
+	var cleanURL = fmt.Sprintf("%s//%s/%s", protocol, parsedURL.Hostname(), parsedURL.Path)
+	return &cleanURL, nil
+}
 
-      return &ParseResult{status: ParseStatus.SERVER_ERROR};
-    }
+func GetPackageUrl(rawPackageName string, version string) ParseResult {
+	validateResult := validateNpmPackageName.Validate(rawPackageName)
 
-    if (packageInfo.repository) {
-      parsedRepository = parseRepositoryEntry(packageInfo.repository);
-    }
+	if !validateResult.ValidForNewPackages {
+		logger.Logf("Invalid package name: \"%s\" %s", rawPackageName, validateResult)
+		return ParseResult{Status: INVALID_PACKAGE_NAME}
+	}
 
-    if (parsedRepository) {
-      logger.info(`Found repository "${parsedRepository}" for package "${rawPackageName}" (version "${version}").`);
-      parsedUrl = parsedRepository;
-    } else if (typeof packageInfo?.homepage === "string") {
-      logger.info(`Found homepage "${packageInfo.homepage}" for package "${rawPackageName}" (version "${version}").`);
-      parsedUrl = packageInfo.homepage;
-    } else if (typeof packageInfo.url === "string") {
-      logger.info(`Found URL "${packageInfo.url}" for package "${rawPackageName}" (version "${version}").`);
-      parsedUrl = packageInfo.url;
-    }
-
-    if (!parsedUrl) {
-      logger.info(`No source URL found in package "${rawPackageName}".`);
-      return &ParseResult{status: ParseStatus.NO_URL_FOUND};
-    }
-
-    parsedUrl = parsedUrl.toString().trim().toLowerCase();
-
-    const urlIsValid = validateUrl(parsedUrl);
-
-    if (!urlIsValid) {
-      logger.info(`Invalid URL "${parsedUrl}" for package "${rawPackageName}".`);
-      return &ParseResult{status: ParseStatus.INVALID_URL};
-    }
-
-    parsedUrl = tryHTTPS(parsedUrl);
-
-    return &ParseResult{
-      status: ParseStatus.SUCCESS,
-      url: parsedUrl,
-    };
-  }
-
-  func ParseRepositoryEntry(repository string | Record<string, string>) string | null {
-    if (typeof repository === "string") {
-      return cleanRepositoryUrl(repository);
-    }
-
-    if (repository.url) {
-      return cleanRepositoryUrl(repository.url);
-    }
-
-    return null;
-  }
-
-  func cleanRepositoryUrl(repo string) string {
-    return repo.replace(/\.git$/, "").replace(/^.*:\/\//, "http://");
-  }
-
-  func tryHTTPS(url string) string {
-    const parsedURL = new URL(url);
-    if (knownSSLHosts.includes(parsedURL.hostname)) {
-      parsedURL.protocol = "https:";
-    }
-    return parsedURL.href;
-  }
+	packageInfo, packageInfoError = packageJson.GetPackageJson(rawPackageName, version)
+}

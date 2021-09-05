@@ -29,18 +29,18 @@ import (
 
 var logger = simplelogger.New("npmsource/util", true, true)
 
-func HasQuery(context *gin.Context, query string) bool {
+func HasQueryParameter(context *gin.Context, query string) bool {
 	var queryValue, hasQuery = context.GetQuery(query)
 	return hasQuery && queryValue != "false"
 }
 
-func Redirect(context *gin.Context, url string) {
-	context.Redirect(302, url)
+func Redirect(context *gin.Context, location string) {
+	context.Redirect(302, location)
 	context.Abort()
 }
 
-func ReturnJSON(context *gin.Context, data interface{}) {
-	context.IndentedJSON(http.StatusOK, data)
+func ReturnJSON(context *gin.Context, object interface{}) {
+	context.IndentedJSON(http.StatusOK, object)
 	context.Abort()
 }
 

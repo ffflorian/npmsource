@@ -27,9 +27,8 @@ import (
 )
 
 type MainRouteResponseBody struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Url     string `json:"url"`
+	Code int    `json:"code"`
+	Url  string `json:"url"`
 }
 
 const (
@@ -42,10 +41,10 @@ var logger = simplelogger.New("npmsource/routes/main", true, true)
 func GetMain(context *gin.Context) {
 	logger.Log("Got request for main page")
 
-	if util.HasQuery(context, "unpkg") {
+	if util.HasQueryParameter(context, "unpkg") {
 		var redirectUrl = fmt.Sprintf("%s/npmsource@latest", unpkgBase)
 
-		if util.HasQuery(context, "raw") {
+		if util.HasQueryParameter(context, "raw") {
 			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectUrl)
 			util.ReturnJSON(context, &MainRouteResponseBody{
 				Code: http.StatusOK,
@@ -59,7 +58,7 @@ func GetMain(context *gin.Context) {
 		return
 	}
 
-	if util.HasQuery(context, "raw") {
+	if util.HasQueryParameter(context, "raw") {
 		util.ReturnJSON(context, &MainRouteResponseBody{
 			Code: http.StatusOK,
 			Url:  repositoryUrl,

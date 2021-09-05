@@ -29,12 +29,10 @@ import (
 type MainRouteResponseBody struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Version string `json:"version"`
 	Url     string `json:"url"`
 }
 
 const (
-	version       = "0.0.1"
 	repositoryUrl = "https://github.com/ffflorian/npmsource"
 	unpkgBase     = "https://unpkg.com/browse"
 )

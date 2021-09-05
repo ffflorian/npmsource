@@ -15,17 +15,11 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-package main
+package util
 
-import (
-	mainRoute "github.com/ffflorian/npmsource/routes/main"
-	"github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
-func main() {
-	router := gin.Default()
-	router.GET("/", mainRoute.GetMain)
-	router.StaticFile("/robots.txt", "./resources/robots.txt")
-
-	router.Run("localhost:8080")
+func HasQuery(context *gin.Context, query string) bool {
+	var queryValue, hasQuery = context.GetQuery(query)
+	return hasQuery && queryValue != "false"
 }

@@ -17,4 +17,40 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 package main
 
-func main() {}
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+const version = "0.0.1"
+
+type MainRouteResponseBody struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Version string `json:"version"`
+	Url     string `json:"url"`
+}
+
+func getMain(c *gin.Context) {
+	response := &MainRouteResponseBody{
+		Code: http.StatusOK,
+	}
+	c.IndentedJSON(http.StatusOK, response)
+}
+
+func getVersion(c *gin.Context) {
+	response := &MainRouteResponseBody{
+		Code:    http.StatusOK,
+		Version: version,
+	}
+	c.IndentedJSON(http.StatusOK, response)
+}
+
+func main() {
+	router := gin.Default()
+	router.GET("/", getMain)
+	router.GET("/version", getVersion)
+
+	router.Run("localhost:8080")
+}

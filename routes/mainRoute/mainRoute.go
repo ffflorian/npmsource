@@ -25,11 +25,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type MainRouteResponseBody struct {
-	Code int    `json:"code"`
-	URL  string `json:"url"`
-}
-
 const (
 	repositoryURL = "https://github.com/ffflorian/npmsource"
 	unpkgBase     = "https://unpkg.com/browse"

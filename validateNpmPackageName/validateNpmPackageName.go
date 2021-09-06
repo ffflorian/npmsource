@@ -130,7 +130,7 @@ func check(name string) ([]string, []string) {
 		warnings = append(warnings, "name can no longer contain capital letters")
 	}
 
-	if regexp.MustCompile(`[~"!()*]`).MatchString(strings.Split(name, "/")[1]) {
+	if regexp.MustCompile(`[~"!()*]`).MatchString(strings.SplitAfter(name, "/")[0]) {
 		warnings = append(warnings, "name can no longer contain special characters (\"~'!()*\")")
 	}
 

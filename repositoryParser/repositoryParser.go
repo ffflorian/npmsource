@@ -46,8 +46,8 @@ const (
 var logger = simplelogger.New("npmsource/repositoryParser", true, true)
 
 func cleanURL(url string) (*string, error) {
-	knownSSLHosts := []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"}
 	url = regexp.MustCompile(`\.git$`).ReplaceAllString(url, "")
+	knownSSLHosts := []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"}
 	protocol := "http"
 
 	parsedURL, urlParseError := URL.Parse(url)
@@ -63,7 +63,7 @@ func cleanURL(url string) (*string, error) {
 		}
 	}
 
-	cleanURL := fmt.Sprintf("%s://%s/%s", protocol, parsedURL.Hostname(), parsedURL.Path)
+	cleanURL := fmt.Sprintf("%s://%s%s", protocol, parsedURL.Hostname(), parsedURL.Path)
 	return &cleanURL, nil
 }
 
@@ -72,7 +72,7 @@ func GetPackageURL(rawPackageName string, version string) ParseResult {
 	foundURL := ""
 
 	if !validateResult.ValidForNewPackages {
-		logger.Logf("Invalid package name: \"%s\" %s", rawPackageName, validateResult)
+		logger.Logf("Invalid package name: \"%s\" %+v", rawPackageName, validateResult.Errors)
 		return ParseResult{Status: INVALID_PACKAGE_NAME}
 	}
 
@@ -91,18 +91,17 @@ func GetPackageURL(rawPackageName string, version string) ParseResult {
 	}
 
 	if packageInfo.Repository.URL != "" {
-		parsedRepository := packageInfo.Repository.URL
-		logger.Logf("Found repository \"parsedRepository\" for package \"%s\" (version \"%s\").", rawPackageName, version)
-		foundURL = parsedRepository
+		logger.Logf("Found repository \"%s\" for package \"%s\" (version \"%s\").", packageInfo.Repository.URL, rawPackageName, version)
+		foundURL = packageInfo.Repository.URL
 	} else if packageInfo.Homepage != "" {
-		logger.Logf("Found homepage \"%s\" for package \"%s\" (version \"%s\").", packageInfo.Homepage, version)
+		logger.Logf("Found homepage \"%s\" for package \"%s\" (version \"%s\").", packageInfo.Homepage, rawPackageName, version)
 		foundURL = packageInfo.Homepage
 	} else if packageInfo.URL != "" {
-		logger.Logf("Found URL \"%s\" for package \"%s\" (version \"%s\").", packageInfo.URL, version)
+		logger.Logf("Found URL \"%s\" for package \"%s\" (version \"%s\").", packageInfo.URL, rawPackageName, version)
 		foundURL = packageInfo.URL
 	}
 
-	if foundURL != "" {
+	if foundURL == "" {
 		logger.Logf("No source URL found in package \"%s\".", rawPackageName)
 		return ParseResult{Status: NO_URL_FOUND}
 	}
@@ -112,6 +111,7 @@ func GetPackageURL(rawPackageName string, version string) ParseResult {
 		logger.Logf("Invalid URL \"%s\" for package \"%s\".", foundURL, rawPackageName)
 		return ParseResult{Status: INVALID_URL}
 	}
+	logger.Logf("Got clean URL \"%s\".", *cleanURL)
 
 	return ParseResult{
 		Status: SUCCESS,

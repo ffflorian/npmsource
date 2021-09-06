@@ -28,7 +28,7 @@ import (
 )
 
 type PackageJson struct {
-	Homepage   string `json:"Homepage"`
+	Homepage   string `json:"homepage"`
 	Repository struct {
 		Type string `json:"type"`
 		URL  string `json:"url"`
@@ -45,7 +45,8 @@ func GetPackageJson(packageName string, version string) (*PackageJson, error) {
 
 	requestBuffer, requestError := request(packageName)
 	if requestError != nil {
-		if strings.Contains(requestError.Error(), "400") {
+		logger.Logf("Error while requesting package.json: %s", requestError.Error())
+		if strings.Contains(requestError.Error(), "404") {
 			return nil, fmt.Errorf("package \"%s\" could not be found", packageName)
 		}
 		return nil, requestError
@@ -55,8 +56,6 @@ func GetPackageJson(packageName string, version string) (*PackageJson, error) {
 	if unmarshalError != nil {
 		return nil, unmarshalError
 	}
-
-	logger.Log("Got packageJson", *packageJson)
 
 	return packageJson, nil
 }

@@ -34,9 +34,8 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.CustomRecovery(errorRoute.InternalError))
 
+	router.GET("/:package", packagesRoute.GetPackage)
 	router.GET("/", mainRoute.GetMain)
-	router.GET("/:package/?", packagesRoute.GetPackage)
-	router.GET("/:scope/:package/?", packagesRoute.GetPackage)
 
 	router.StaticFile("/robots.txt", "./resources/robots.txt")
 	router.StaticFile("/commit", "./resources/commit")

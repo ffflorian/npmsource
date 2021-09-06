@@ -37,25 +37,30 @@ type PackagesRouteResponseBody struct {
 }
 
 var (
-	packageNameRegex = regexp.MustCompile(`^\\/((?:@[^@/]+/)?[^@/]+)(?:@([^@/]+))?\\/?$`)
+	packageNameRegex = regexp.MustCompile(`^/((?:@[^@/]+/)?[^@/]+)(?:@([^@/]+))?/?$`)
 	logger           = simplelogger.New("npmsource/routes/main", true, true)
+	unpkgBase        = "https://unpkg.com/browse"
 )
 
 func GetPackage(context *gin.Context) {
 	if !packageNameRegex.MatchString(context.Request.URL.Path) {
+		logger.Logf("Got request \"%s\", doesn't match", context.Request.URL.Path)
 		return
 	}
 
-	packageName := strings.TrimSpace(context.Param("package"))
-	version := "undefined"
+	packageParam := fmt.Sprintf("/%s", strings.TrimSpace(context.Param("package")))
+
+	matches := packageNameRegex.FindStringSubmatch(packageParam)
+	rawPackageName := matches[1]
+	version := matches[2]
 
 	var errorCode int
 	var errorMessage string
 
-	logger.Logf("Got request for package \"%s\" (version \"%s\").", packageName, version)
+	logger.Logf("Got request for package \"%s\" (version \"%s\").", rawPackageName, version)
 
 	if util.HasQueryParameter(context, "unpkg") {
-		const redirectURL = `${unpkgBase}/${packageName}@${version}/`
+		redirectURL := fmt.Sprintf("%s/%s/%s", unpkgBase, rawPackageName, version)
 
 		_, urlParseError := URL.Parse(redirectURL)
 
@@ -65,30 +70,30 @@ func GetPackage(context *gin.Context) {
 		}
 
 		if util.HasQueryParameter(context, "raw") {
-			logger.Logf("Returning raw unpkg info for \"%s\": \"%s\" ...", packageName, redirectURL)
+			logger.Logf("Returning raw unpkg info for \"%s\": \"%s\" ...", rawPackageName, redirectURL)
 			util.ReturnRedirectURL(context, redirectURL)
 			return
 		}
 
-		logger.Logf("Redirecting package \"%s\" to unpkg: \"%s\" ...", packageName, redirectURL)
+		logger.Logf("Redirecting package \"%s\" to unpkg: \"%s\" ...", rawPackageName, redirectURL)
 		util.Redirect(context, redirectURL)
 		return
 	}
 
-	parseResult := repositoryParser.GetPackageURL(packageName, version)
+	parseResult := repositoryParser.GetPackageURL(rawPackageName, version)
 
 	switch parseResult.Status {
 	case repositoryParser.SUCCESS:
 		{
-			redirectURL := "parseResult.url"
+			redirectURL := parseResult.URL
 
 			if util.HasQueryParameter(context, "raw") {
-				logger.Logf("Returning raw info for \"%s\": \"%s\" ...", packageName, redirectURL)
+				logger.Logf("Returning raw info for \"%s\": \"%s\" ...", rawPackageName, redirectURL)
 				util.ReturnRedirectURL(context, redirectURL)
 				return
 			}
 
-			logger.Logf("Redirecting package \"%s\" to \"%s\" ...", packageName, redirectURL)
+			logger.Logf("Redirecting package \"%s\" to \"%s\" ...", rawPackageName, redirectURL)
 			util.Redirect(context, redirectURL)
 			return
 		}
@@ -104,7 +109,7 @@ func GetPackage(context *gin.Context) {
 	case repositoryParser.NO_URL_FOUND:
 		{
 			errorCode = http.StatusNotFound
-			errorMessage = `No source URL found. Please visit https://www.npmjs.com/package/${packageName}.`
+			errorMessage = fmt.Sprintf("No source URL found. Please visit https://www.npmjs.com/package/%s.", rawPackageName)
 			break
 		}
 

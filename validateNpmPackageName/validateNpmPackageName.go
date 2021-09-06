@@ -31,59 +31,61 @@ type ValidationResult struct {
 	Warnings            []string
 }
 
-var scopedPackagePattern = regexp.MustCompile(`^(?:@([^/]+?)[/])?([^/]+?)$`)
-var blocklist = []string{
-	"node_modules",
-	"favicon.ico",
-}
-var builtins = []string{
-	"assert",
-	"async_hooks",
-	"buffer",
-	"child_process",
-	"cluster",
-	"console",
-	"constants",
-	"crypto",
-	"dgram",
-	"dns",
-	"domain",
-	"events",
-	"freelist",
-	"fs",
-	"http",
-	"http2",
-	"https",
-	"inspector",
-	"module",
-	"net",
-	"os",
-	"path",
-	"perf_hooks",
-	"process",
-	"punycode",
-	"querystring",
-	"readline",
-	"repl",
-	"stream",
-	"string_decoder",
-	"sys",
-	"timers",
-	"tls",
-	"trace_events",
-	"tty",
-	"url",
-	"util",
-	"v8",
-	"vm",
-	"wasi",
-	"worker_threads",
-	"zli",
-}
+var (
+	scopedPackagePattern = regexp.MustCompile(`^(?:@([^/]+?)[/])?([^/]+?)$`)
+	blocklist            = []string{
+		"node_modules",
+		"favicon.ico",
+	}
+	builtins = []string{
+		"assert",
+		"async_hooks",
+		"buffer",
+		"child_process",
+		"cluster",
+		"console",
+		"constants",
+		"crypto",
+		"dgram",
+		"dns",
+		"domain",
+		"events",
+		"freelist",
+		"fs",
+		"http",
+		"http2",
+		"https",
+		"inspector",
+		"module",
+		"net",
+		"os",
+		"path",
+		"perf_hooks",
+		"process",
+		"punycode",
+		"querystring",
+		"readline",
+		"repl",
+		"stream",
+		"string_decoder",
+		"sys",
+		"timers",
+		"tls",
+		"trace_events",
+		"tty",
+		"url",
+		"util",
+		"v8",
+		"vm",
+		"wasi",
+		"worker_threads",
+		"zli",
+	}
+)
 
 func check(name string) ([]string, []string) {
-	var warnings = make([]string, 0)
-	var errors = make([]string, 0)
+	warnings := make([]string, 0)
+	errors := make([]string, 0)
 
 	if name == "" {
 		errors = append(errors, "name length must be greater than zero")
@@ -134,10 +136,10 @@ func check(name string) ([]string, []string) {
 
 	if url.QueryEscape(name) != name {
 		// Maybe it's a scoped package name, like @user/package
-		var nameMatch = scopedPackagePattern.FindStringSubmatch(name)
+		nameMatch := scopedPackagePattern.FindStringSubmatch(name)
 		if len(nameMatch) != 0 {
-			var user = nameMatch[1]
-			var pkg = nameMatch[2]
+			user := nameMatch[1]
+			pkg := nameMatch[2]
 			if url.QueryEscape(user) == user && url.QueryEscape(pkg) == pkg {
 				return warnings, errors
 			}
@@ -150,7 +152,7 @@ func check(name string) ([]string, []string) {
 }
 
 func Validate(name string) ValidationResult {
-	var warnings, errors = check(name)
+	warnings, errors := check(name)
 	return ValidationResult{
 		ValidForNewPackages: len(errors) == 0 && len(warnings) == 0,
 		ValidForOldPackages: len(errors) == 0,

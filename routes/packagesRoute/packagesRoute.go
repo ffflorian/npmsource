@@ -20,10 +20,12 @@ package packagesRoute
 import (
 	"fmt"
 	"net/http"
+	URL "net/url"
 	"regexp"
 	"strings"
 
 	"github.com/ffflorian/go-tools/simplelogger"
+	"github.com/ffflorian/npmsource/repositoryParser"
 	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
 )
@@ -31,13 +33,8 @@ import (
 type PackagesRouteResponseBody struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	Url     string `json:"url"`
+	URL     string `json:"url"`
 }
-
-const (
-	repositoryUrl = "https://github.com/ffflorian/npmsource"
-	unpkgBase     = "https://unpkg.com/browse"
-)
 
 var (
 	packageNameRegex = regexp.MustCompile(`^\\/((?:@[^@/]+/)?[^@/]+)(?:@([^@/]+))?\\/?$`)
@@ -45,86 +42,94 @@ var (
 )
 
 func GetPackage(context *gin.Context) {
-      packageName := strings.TrimSpace(context.Param("package"))
-      version: string = "undefined"
+	if !packageNameRegex.MatchString(context.Request.URL.Path) {
+		return
+	}
 
-      logger.Logf("Got request for package \"%s\" (version \"%s\").", packageName, version);
+	packageName := strings.TrimSpace(context.Param("package"))
+	version := "undefined"
 
-      if (util.HasQueryParameter(context, "unpkg")) {
-        const redirectUrl = `${unpkgBase}/${packageName}@${version}/`;
+	var errorCode int
+	var errorMessage string
 
-        if (!validateUrl(redirectUrl)) {
-          return response
-            .status(HTTP_STATUS.BAD_REQUEST)
-            .json({code: HTTP_STATUS.BAD_REQUEST, message: `Invalid URL: ${redirectUrl}`});
-        }
+	logger.Logf("Got request for package \"%s\" (version \"%s\").", packageName, version)
 
-        if (util.HasQueryParameter(context, "raw")) {
-          logger.Logf("Returning raw unpkg info for \"%s\": \"%s\" ...", packageName, redirectUrl);
-          return util.ReturnJSON(&PackagesRouteResponseBody{
-            code: HTTP_STATUS.OK,
-            url: redirectUrl,
-          });
-        }
+	if util.HasQueryParameter(context, "unpkg") {
+		const redirectURL = `${unpkgBase}/${packageName}@${version}/`
 
-        logger.Logf("Redirecting package \"%s\" to unpkg: \"%s\" ...", packageName, redirectUrl);
-        return util.Redirect(redirectUrl);
-      }
+		_, urlParseError := URL.Parse(redirectURL)
 
-      const parseResult = "" // await RepositoryParser.getPackageUrl(packageName, version);
+		if urlParseError != nil {
+			util.ReturnError(context, http.StatusBadRequest, fmt.Sprintf("Invalid URL: %s", redirectURL))
+			return
+		}
 
-      var errorCode int;
-      var errorMessage string;
+		if util.HasQueryParameter(context, "raw") {
+			logger.Logf("Returning raw unpkg info for \"%s\": \"%s\" ...", packageName, redirectURL)
+			util.ReturnRedirectURL(context, redirectURL)
+			return
+		}
 
-      switch (parseResult) {
-        case "SUCCESS": {
-          var redirectUrl = "parseResult.url";
+		logger.Logf("Redirecting package \"%s\" to unpkg: \"%s\" ...", packageName, redirectURL)
+		util.Redirect(context, redirectURL)
+		return
+	}
 
-          if (util.HasQueryParameter(request, "raw")) {
-            logger.Logf("Returning raw info for \"%s\": \"%s\" ...", packageName, redirectUrl);
-            return util.ReturnJSON(&PackagesRouteResponseBody{
-              code: HTTP_STATUS.OK,
-              url: redirectUrl,
-            });
-          }
+	parseResult := repositoryParser.GetPackageURL(packageName, version)
 
-          logger.Logf("Redirecting package \"%s\" to \"%s\" ...", packageName, redirectUrl);
-          return util.Redirect(redirectUrl);
-        }
+	switch parseResult.Status {
+	case repositoryParser.SUCCESS:
+		{
+			redirectURL := "parseResult.url"
 
-        case ParseStatus.INVALID_PACKAGE_NAME: {
-          errorCode = HTTP_STATUS.UNPROCESSABLE_ENTITY;
-          errorMessage = "Invalid package name";
-          break;
-        }
+			if util.HasQueryParameter(context, "raw") {
+				logger.Logf("Returning raw info for \"%s\": \"%s\" ...", packageName, redirectURL)
+				util.ReturnRedirectURL(context, redirectURL)
+				return
+			}
 
-        case ParseStatus.INVALID_URL:
-        case ParseStatus.NO_URL_FOUND: {
-          errorCode = HTTP_STATUS.NOT_FOUND;
-          errorMessage = `No source URL found. Please visit https://www.npmjs.com/package/${packageName}.`;
-          break;
-        }
+			logger.Logf("Redirecting package \"%s\" to \"%s\" ...", packageName, redirectURL)
+			util.Redirect(context, redirectURL)
+			return
+		}
 
-        case ParseStatus.PACKAGE_NOT_FOUND: {
-          errorCode = HTTP_STATUS.NOT_FOUND;
-          errorMessage = "Package not found";
-          break;
-        }
+	case repositoryParser.INVALID_PACKAGE_NAME:
+		{
+			errorCode = http.StatusUnprocessableEntity
+			errorMessage = "Invalid package name"
+			break
+		}
 
-        case ParseStatus.VERSION_NOT_FOUND: {
-          errorCode = HTTP_STATUS.NOT_FOUND;
-          errorMessage = "Version not found";
-          break;
-        }
+	case repositoryParser.INVALID_URL:
+	case repositoryParser.NO_URL_FOUND:
+		{
+			errorCode = http.StatusNotFound
+			errorMessage = `No source URL found. Please visit https://www.npmjs.com/package/${packageName}.`
+			break
+		}
 
-        case ParseStatus.SERVER_ERROR:
-        default: {
-          errorCode = HTTP_STATUS.INTERNAL_SERVER_ERROR;
-          errorMessage = "Internal server error";
-          break;
-        }
-      }
+	case repositoryParser.PACKAGE_NOT_FOUND:
+		{
+			errorCode = http.StatusNotFound
+			errorMessage = "Package not found"
+			break
+		}
 
-      return context.IndentedJSON(errorCode, &PackagesRouteResponseBody{code: errorCode, message: errorMessage});
-    }
+	case repositoryParser.VERSION_NOT_FOUND:
+		{
+			errorCode = http.StatusNotFound
+			errorMessage = "Version not found"
+			break
+		}
+
+	case repositoryParser.SERVER_ERROR:
+	default:
+		{
+			errorCode = http.StatusInternalServerError
+			errorMessage = "Internal server error"
+			break
+		}
+	}
+
+	context.IndentedJSON(errorCode, &PackagesRouteResponseBody{Code: errorCode, Message: errorMessage})
 }

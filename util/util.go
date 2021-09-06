@@ -27,10 +27,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ResponseBody struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	URL     string `json:"url"`
+}
+
 var logger = simplelogger.New("npmsource/util", true, true)
 
 func HasQueryParameter(context *gin.Context, query string) bool {
-	var queryValue, hasQuery = context.GetQuery(query)
+	queryValue, hasQuery := context.GetQuery(query)
 	return hasQuery && queryValue != "false"
 }
 
@@ -39,8 +45,19 @@ func Redirect(context *gin.Context, location string) {
 	context.Abort()
 }
 
-func ReturnJSON(context *gin.Context, object interface{}) {
-	context.IndentedJSON(http.StatusOK, object)
+func ReturnRedirectURL(context *gin.Context, redirectURL string) {
+	context.IndentedJSON(http.StatusOK, &ResponseBody{
+		Code: http.StatusOK,
+		URL:  redirectURL,
+	})
+	context.Abort()
+}
+
+func ReturnError(context *gin.Context, code int, message string) {
+	context.IndentedJSON(code, &ResponseBody{
+		Message: message,
+		Code:    code,
+	})
 	context.Abort()
 }
 

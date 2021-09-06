@@ -21,6 +21,7 @@ import (
 	"fmt"
 	URL "net/url"
 	"regexp"
+	"strings"
 
 	"github.com/ffflorian/go-tools/simplelogger"
 	"github.com/ffflorian/npmsource/packageJson"
@@ -29,7 +30,7 @@ import (
 
 type ParseResult struct {
 	Status string
-	Url    string
+	URL    string
 }
 
 const (
@@ -42,39 +43,78 @@ const (
 	VERSION_NOT_FOUND    = "VERSION_NOT_FOUND"
 )
 
-var (
-	knownSSLHosts = []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"}
-	logger        = simplelogger.New("npmsource/repositoryParser", true, true)
-)
+var logger = simplelogger.New("npmsource/repositoryParser", true, true)
 
-func cleanUrl(url string) (*string, error) {
+func cleanURL(url string) (*string, error) {
+	knownSSLHosts := []string{"bitbucket.org", "github.com", "gitlab.com", "sourceforge.net"}
 	url = regexp.MustCompile(`\.git$`).ReplaceAllString(url, "")
+	protocol := "http"
 
-	var parsedURL, urlParseError = URL.Parse(url)
+	parsedURL, urlParseError := URL.Parse(url)
 
 	if urlParseError != nil {
 		return nil, urlParseError
 	}
 
-	var protocol = "http:"
-
 	for _, knownSSLHost := range knownSSLHosts {
 		if knownSSLHost == parsedURL.Hostname() {
-			protocol = "https:"
+			protocol = "https"
+			break
 		}
 	}
 
-	var cleanURL = fmt.Sprintf("%s//%s/%s", protocol, parsedURL.Hostname(), parsedURL.Path)
+	cleanURL := fmt.Sprintf("%s://%s/%s", protocol, parsedURL.Hostname(), parsedURL.Path)
 	return &cleanURL, nil
 }
 
-func GetPackageUrl(rawPackageName string, version string) ParseResult {
+func GetPackageURL(rawPackageName string, version string) ParseResult {
 	validateResult := validateNpmPackageName.Validate(rawPackageName)
+	foundURL := ""
 
 	if !validateResult.ValidForNewPackages {
 		logger.Logf("Invalid package name: \"%s\" %s", rawPackageName, validateResult)
 		return ParseResult{Status: INVALID_PACKAGE_NAME}
 	}
 
-	packageInfo, packageInfoError = packageJson.GetPackageJson(rawPackageName, version)
+	packageInfo, packageInfoError := packageJson.GetPackageJson(rawPackageName, version)
+
+	if packageInfoError != nil {
+		if strings.Contains(packageInfoError.Error(), "for package") {
+			logger.Logf("Version \"%s\" not found for package \"%s\"", version, rawPackageName)
+			return ParseResult{Status: VERSION_NOT_FOUND}
+		}
+
+		if strings.Contains(packageInfoError.Error(), "could not be found") {
+			logger.Logf("Package \"%s\" not found", rawPackageName)
+			return ParseResult{Status: PACKAGE_NOT_FOUND}
+		}
+	}
+
+	if packageInfo.Repository.URL != "" {
+		parsedRepository := packageInfo.Repository.URL
+		logger.Logf("Found repository \"parsedRepository\" for package \"%s\" (version \"%s\").", rawPackageName, version)
+		foundURL = parsedRepository
+	} else if packageInfo.Homepage != "" {
+		logger.Logf("Found homepage \"%s\" for package \"%s\" (version \"%s\").", packageInfo.Homepage, version)
+		foundURL = packageInfo.Homepage
+	} else if packageInfo.URL != "" {
+		logger.Logf("Found URL \"%s\" for package \"%s\" (version \"%s\").", packageInfo.URL, version)
+		foundURL = packageInfo.URL
+	}
+
+	if foundURL != "" {
+		logger.Logf("No source URL found in package \"%s\".", rawPackageName)
+		return ParseResult{Status: NO_URL_FOUND}
+	}
+
+	cleanURL, cleanURLError := cleanURL(foundURL)
+	if cleanURLError != nil {
+		logger.Logf("Invalid URL \"%s\" for package \"%s\".", foundURL, rawPackageName)
+		return ParseResult{Status: INVALID_URL}
+	}
+
+	return ParseResult{
+		Status: SUCCESS,
+		URL:    *cleanURL,
+	}
 }

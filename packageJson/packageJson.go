@@ -19,10 +19,10 @@ package packageJson
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/ffflorian/go-tools/simplelogger"
 )
@@ -31,9 +31,9 @@ type PackageJson struct {
 	Homepage   string `json:"Homepage"`
 	Repository struct {
 		Type string `json:"type"`
-		Url  string `json:"url"`
+		URL  string `json:"url"`
 	} `json:"repository"`
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 const npmRegistryURL = "https://registry.npmjs.org/"
@@ -45,6 +45,9 @@ func GetPackageJson(packageName string, version string) (*PackageJson, error) {
 
 	requestBuffer, requestError := request(packageName)
 	if requestError != nil {
+		if strings.Contains(requestError.Error(), "400") {
+			return nil, fmt.Errorf("package \"%s\" could not be found", packageName)
+		}
 		return nil, requestError
 	}
 
@@ -80,7 +83,7 @@ func request(urlPath string) (*[]byte, error) {
 	logger.Logf("Got response status code \"%d\"", response.StatusCode)
 
 	if response.StatusCode != 200 {
-		return nil, errors.New("invalid response status code")
+		return nil, fmt.Errorf("invalid response status code: %d", response.StatusCode)
 	}
 
 	buffer, readError := ioutil.ReadAll(response.Body)

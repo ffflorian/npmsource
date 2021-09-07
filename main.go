@@ -20,6 +20,7 @@ package main
 import (
 	"github.com/ffflorian/npmsource/routes/errorRoute"
 	"github.com/ffflorian/npmsource/routes/mainRoute"
+	"github.com/ffflorian/npmsource/routes/packagesRoute"
 	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
 )
@@ -33,6 +34,7 @@ func main() {
 	router.Use(gin.Logger())
 	router.Use(gin.CustomRecovery(errorRoute.InternalError))
 
+	router.GET("/:package", packagesRoute.GetPackage)
 	router.GET("/", mainRoute.GetMain)
 
 	router.StaticFile("/robots.txt", "./resources/robots.txt")

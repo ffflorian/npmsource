@@ -19,21 +19,14 @@ package mainRoute
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/ffflorian/go-tools/simplelogger"
 	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
 )
 
-type MainRouteResponseBody struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Url     string `json:"url"`
-}
-
 const (
-	repositoryUrl = "https://github.com/ffflorian/npmsource"
+	repositoryURL = "https://github.com/ffflorian/npmsource"
 	unpkgBase     = "https://unpkg.com/browse"
 )
 
@@ -42,31 +35,25 @@ var logger = simplelogger.New("npmsource/routes/main", true, true)
 func GetMain(context *gin.Context) {
 	logger.Log("Got request for main page")
 
-	if util.HasQuery(context, "unpkg") {
-		var redirectUrl = fmt.Sprintf("%s/npmsource@latest", unpkgBase)
+	if util.HasQueryParameter(context, "unpkg") {
+		redirectURL := fmt.Sprintf("%s/npmsource@latest", unpkgBase)
 
-		if util.HasQuery(context, "raw") {
-			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectUrl)
-			util.ReturnJSON(context, &MainRouteResponseBody{
-				Code: http.StatusOK,
-				Url:  redirectUrl,
-			})
+		if util.HasQueryParameter(context, "raw") {
+			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectURL)
+			util.ReturnRedirectURL(context, redirectURL)
 			return
 		}
 
-		logger.Logf("Redirecting main page to unpkg: \"%s\"", redirectUrl)
-		util.Redirect(context, redirectUrl)
+		logger.Logf("Redirecting main page to unpkg: \"%s\"", redirectURL)
+		util.Redirect(context, redirectURL)
 		return
 	}
 
-	if util.HasQuery(context, "raw") {
-		util.ReturnJSON(context, &MainRouteResponseBody{
-			Code: http.StatusOK,
-			Url:  repositoryUrl,
-		})
+	if util.HasQueryParameter(context, "raw") {
+		util.ReturnRedirectURL(context, repositoryURL)
 		return
 	}
 
-	logger.Logf("Redirecting main page to \"%s\"", repositoryUrl)
-	util.Redirect(context, repositoryUrl)
+	logger.Logf("Redirecting main page to \"%s\"", repositoryURL)
+	util.Redirect(context, repositoryURL)
 }

@@ -31,9 +31,13 @@ import (
 )
 
 type PackagesRouteResponseBody struct {
+	Code int    `json:"code"`
+	URL  string `json:"url"`
+}
+
+type PackagesRouteErrorBody struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
-	URL     string `json:"url"`
 }
 
 var (
@@ -42,6 +46,16 @@ var (
 	unpkgBase        = "https://unpkg.com/browse"
 )
 
+// @Summary Get package info
+// @Produce json
+// @Param package path string true "Package name"
+// @Success 200 {object} PackagesRouteResponseBody
+// @Failure 400 {object} PackagesRouteErrorBody
+// @Failure 404 {object} PackagesRouteErrorBody
+// @Failure 422 {object} PackagesRouteErrorBody
+// @Failure 500 {object} PackagesRouteErrorBody
+// @Router /{package} [get]
+// @Router /{scope}/{package} [get]
 func GetPackage(context *gin.Context) {
 	if !packageNameRegex.MatchString(context.Request.URL.Path) {
 		logger.Logf("Got request \"%s\", doesn't match", context.Request.URL.Path)
@@ -71,7 +85,10 @@ func GetPackage(context *gin.Context) {
 
 		if util.HasQueryParameter(context, "raw") {
 			logger.Logf("Returning raw unpkg info for \"%s\": \"%s\" ...", rawPackageName, redirectURL)
-			util.ReturnRedirectURL(context, redirectURL)
+			context.IndentedJSON(http.StatusOK, &PackagesRouteResponseBody{
+				Code: http.StatusOK,
+				URL:  redirectURL,
+			})
 			return
 		}
 
@@ -89,7 +106,10 @@ func GetPackage(context *gin.Context) {
 
 			if util.HasQueryParameter(context, "raw") {
 				logger.Logf("Returning raw info for \"%s\": \"%s\" ...", rawPackageName, redirectURL)
-				util.ReturnRedirectURL(context, redirectURL)
+				context.IndentedJSON(http.StatusOK, &PackagesRouteResponseBody{
+					Code: http.StatusOK,
+					URL:  redirectURL,
+				})
 				return
 			}
 
@@ -136,5 +156,8 @@ func GetPackage(context *gin.Context) {
 		}
 	}
 
-	context.IndentedJSON(errorCode, &PackagesRouteResponseBody{Code: errorCode, Message: errorMessage})
+	context.IndentedJSON(errorCode, &PackagesRouteErrorBody{
+		Code:    errorCode,
+		Message: errorMessage,
+	})
 }

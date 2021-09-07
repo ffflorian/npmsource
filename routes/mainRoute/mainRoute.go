@@ -19,8 +19,10 @@ package mainRoute
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/ffflorian/go-tools/simplelogger"
+	"github.com/ffflorian/npmsource/routes/packagesRoute"
 	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
 )
@@ -32,6 +34,10 @@ const (
 
 var logger = simplelogger.New("npmsource/routes/main", true, true)
 
+// @Summary Get main info
+// @Produce json
+// @Success 200 {object} packagesRoute.PackagesRouteResponseBody
+// @Router / [get]
 func GetMain(context *gin.Context) {
 	logger.Log("Got request for main page")
 
@@ -40,7 +46,10 @@ func GetMain(context *gin.Context) {
 
 		if util.HasQueryParameter(context, "raw") {
 			logger.Logf("Returning raw unpkg info for main page: \"%s\"", redirectURL)
-			util.ReturnRedirectURL(context, redirectURL)
+			context.IndentedJSON(http.StatusOK, &packagesRoute.PackagesRouteResponseBody{
+				Code: http.StatusOK,
+				URL:  redirectURL,
+			})
 			return
 		}
 
@@ -50,7 +59,10 @@ func GetMain(context *gin.Context) {
 	}
 
 	if util.HasQueryParameter(context, "raw") {
-		util.ReturnRedirectURL(context, repositoryURL)
+		context.IndentedJSON(http.StatusOK, &packagesRoute.PackagesRouteResponseBody{
+			Code: http.StatusOK,
+			URL:  repositoryURL,
+		})
 		return
 	}
 

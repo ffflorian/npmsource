@@ -23,18 +23,36 @@ import (
 	"github.com/ffflorian/npmsource/routes/packagesRoute"
 	"github.com/ffflorian/npmsource/util"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"     // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
+	_ "github.com/swaggo/gin-swagger/example/basic/docs"
 )
 
 const version = "0.0.1"
 
+// @title npmsource
+// @version 1.0
+// @description Find the source of an npm package in an instant
+
+// @contact.name Florian Imdahl
+// @contact.url https://ffflorian.de
+
+// @license.name GNU General Public License v3.0
+// @license.url https://www.gnu.org/licenses/gpl-3.0.en.html
+
+// @host npmsource.com
+// @BasePath /
 func main() {
 	util.WriteCommitFile()
 
 	router := gin.New()
+	url := ginSwagger.URL("http://localhost:8080/swagger/doc.json") // The url pointing to API definition
+	router.GET("/_swagger-ui/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
+
 	router.Use(gin.Logger())
 	router.Use(gin.CustomRecovery(errorRoute.InternalError))
 
-	router.GET("/:package", packagesRoute.GetPackage)
+	router.GET("/:package/*any", packagesRoute.GetPackage)
 	router.GET("/", mainRoute.GetMain)
 
 	router.StaticFile("/robots.txt", "./resources/robots.txt")

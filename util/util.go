@@ -19,7 +19,6 @@ package util
 
 import (
 	"io/ioutil"
-	"net/http"
 	"os"
 	"strings"
 
@@ -42,14 +41,6 @@ func HasQueryParameter(context *gin.Context, query string) bool {
 
 func Redirect(context *gin.Context, location string) {
 	context.Redirect(302, location)
-	context.Abort()
-}
-
-func ReturnRedirectURL(context *gin.Context, redirectURL string) {
-	context.IndentedJSON(http.StatusOK, &ResponseBody{
-		Code: http.StatusOK,
-		URL:  redirectURL,
-	})
 	context.Abort()
 }
 

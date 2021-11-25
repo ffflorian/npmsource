@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/ffflorian/go-tools v0.0.0-20210905133536-2a3facdc2522
-	github.com/gin-gonic/gin v1.7.4
+	github.com/gin-gonic/gin v1.7.7
 )
 
 require (
